@@ -15,7 +15,7 @@ $ mpiexec -np <nof_processors> denoiser <input_file> <output_file> <beta> <pi>
 ```
 Optionally, it can run by the following command to run in row mode:
 ```sh
-$ mpiexec -n <nof_processors> denoiser <input_file> <output_file> <beta> <pi> row
+$ mpiexec -np <nof_processors> denoiser <input_file> <output_file> <beta> <pi> row
 ```
 
 where:
