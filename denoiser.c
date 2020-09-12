@@ -4,6 +4,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <papi.h>
 
 #define TOTAL_ITERATIONS 5000000
 #define MASTER_RANK 0
@@ -342,6 +343,8 @@ int askResult(MPI_Request* askRequests, int *askReqResCount, MPI_Request* askRes
  * @return
  */
 int slave(int world_size, int world_rank, double beta, double gammaValue) {
+
+    char hn[99];
     int iterations = TOTAL_ITERATIONS / (world_size - 1);
 
     int rows, columns;
@@ -372,12 +375,14 @@ int slave(int world_size, int world_rank, double beta, double gammaValue) {
 
     int askReqResCount = 0, finishedReqResCount = 0;
 
+    gethostname(hn, 99);
+
     /* initialize all answer requests (Irecv for all neighbours for potentials questions in later) */
     initializeAnswers(neighbours, positions, answerRequests, answerResponses);
     /* initialize all answer requests done */
     while(iterations --) {
         if (iterations % 1000000 == 0) {
-            printf("slave %d started a new millionth iteration - left: %d\n", world_rank, iterations);
+            printf("slave %d (on node %s) started a new millionth iteration - left: %d\n", world_rank, hn,iterations);
         }
         /* pick a random pixel */
         int rowPosition = rand() % rows;
@@ -440,7 +445,7 @@ int slave(int world_size, int world_rank, double beta, double gammaValue) {
         sendMessage(subImage[i], columns, MPI_BYTE, MASTER_RANK, FINAL_IMAGE_START + i);
         free(subImage[i]);
     }
-    printf("slave %d finished its work end exited successfully.\n", world_rank);
+    printf("slave %d finished its work end exited successfully (on node %s).\n", world_rank, hn);
     return 0;
 }
 
@@ -455,6 +460,11 @@ int slave(int world_size, int world_rank, double beta, double gammaValue) {
  * @return
  */
 int master(int world_size, int world_rank, char* input, char* output, int grid) {
+    
+    long_long papi_time_start, papi_time_stop;
+    
+    papi_time_start = PAPI_get_real_usec();
+
     FILE *inputFile, *outputFile;
     inputFile = fopen(input, "r");
 
@@ -572,6 +582,10 @@ int master(int world_size, int world_rank, char* input, char* output, int grid) 
         fprintf(outputFile, "\n");
     }
     printf("finished successfully!\n");
+
+    papi_time_stop = PAPI_get_real_usec();
+
+    printf("Running time for %d processors: %dus\n", world_size, papi_time_stop-papi_time_start);
     return 0;
 }
 
@@ -582,6 +596,7 @@ int master(int world_size, int world_rank, char* input, char* output, int grid) 
  * @return
  */
 int main(int argc, char** argv) {
+    
     // MPI INITIALIZATIONS
     MPI_Init(NULL, NULL);
     int world_size;
@@ -626,4 +641,5 @@ int main(int argc, char** argv) {
 
 
     MPI_Finalize();
+
 }
