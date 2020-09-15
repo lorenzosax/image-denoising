@@ -155,8 +155,8 @@ int main(int argc, char** argv) {
     }
 
     char image[rowCount][columnCount];
-    char finalResult[rowCount];
-    for (i = 0; i < rowCount; i++) {
+    char* finalResult[rowCount];
+    for (int i = 0; i < rowCount; i++) {
         image[i] = (char)pop(rowQueue);
         finalResult[i] = (char*)malloc(columnCount * sizeof(char));
         memcpy(finalResult[i], image[i], columnCount);
@@ -167,7 +167,7 @@ int main(int argc, char** argv) {
 
     while(iterations --) {
         if (iterations % 1000000 == 0) {
-            printf("slave %d (on node %s) started a new millionth iteration - left: %d\n", world_rank, hn,iterations);
+            printf("Iteration left: %d\n", iterations);
         }
         /* pick a random pixel */
         int rowPosition = rand() % rowCount;
@@ -191,8 +191,8 @@ int main(int argc, char** argv) {
 
     printf("finished calculations, started writing to output\n");
     outputFile = fopen(output, "w");
-    for (rowNumber = 0; rowNumber < rowCount; ++rowNumber) {
-        for (columnNumber = 0; columnNumber < columnCount; ++columnNumber) {
+    for (int rowNumber = 0; rowNumber < rowCount; ++rowNumber) {
+        for (int columnNumber = 0; columnNumber < columnCount; ++columnNumber) {
             fprintf(outputFile, "%d ", (int)finalResult[rowNumber][columnNumber]);
         }
         fprintf(outputFile, "\n");
