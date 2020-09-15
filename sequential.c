@@ -156,7 +156,7 @@ int main(int argc, char** argv) {
 
     char* finalResult[rowCount], image[rowCount][columnCount];
     for (int i = 0; i < rowCount; i++) {
-        image[i] = (char)pop(rowQueue);
+        image[i] = (char*)pop(rowQueue);
         finalResult[i] = (char*)malloc(columnCount * sizeof(char));
         memcpy(finalResult[i], image[i], columnCount);
     }
