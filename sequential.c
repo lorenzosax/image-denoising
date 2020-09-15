@@ -154,8 +154,7 @@ int main(int argc, char** argv) {
         push(rowQueue, (void*)row);
     }
 
-    char image[rowCount][columnCount];
-    char* finalResult[rowCount];
+    char* finalResult[rowCount], image[rowCount][columnCount];
     for (int i = 0; i < rowCount; i++) {
         image[i] = (char)pop(rowQueue);
         finalResult[i] = (char*)malloc(columnCount * sizeof(char));
