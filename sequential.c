@@ -111,9 +111,6 @@ int main(int argc, char** argv) {
     char* input = argv[1];
     char* output = argv[2];
 
-    long_long papi_time_start, papi_time_stop;
-    papi_time_start = PAPI_get_real_usec();
-
     // region START
 
     FILE *inputFile, *outputFile;
@@ -165,6 +162,9 @@ int main(int argc, char** argv) {
     // region Calculations
     int iterations = TOTAL_ITERATIONS;
 
+    long_long papi_time_start, papi_time_stop;
+    papi_time_start = PAPI_get_real_usec();
+
     while(iterations --) {
         if (iterations % 1000000 == 0) {
             printf("Iteration left: %d\n", iterations);
@@ -190,6 +190,10 @@ int main(int argc, char** argv) {
     // endregion
 
     printf("finished calculations, started writing to output\n");
+
+    papi_time_stop = PAPI_get_real_usec();
+    printf("Running time %dus\n", papi_time_stop-papi_time_start);
+
     int rowNumber, columnNumber;
     outputFile = fopen(output, "w");
     for (rowNumber = 0; rowNumber < rowCount; ++rowNumber) {
@@ -202,7 +206,5 @@ int main(int argc, char** argv) {
 
     // endregion
 
-    papi_time_stop = PAPI_get_real_usec();
-    printf("Running time %dus\n", papi_time_stop-papi_time_start);
 
 }
