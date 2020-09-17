@@ -5,79 +5,42 @@
 #include <math.h>
 #include <time.h>
 #include <papi.h>
+#include "queue.c"
 
 #define TOTAL_ITERATIONS 5000000
 #define MASTER_RANK 0
 #define DIRECTIONS 8
 
-/* node and queue is just used to fetch an input text without knowing its dimensions */
-/* below is a simple implementation of a standard queue by me */
-
-typedef struct node {
-    void *val;
-    struct node* next;
-} node;
-
-typedef struct queue {
-    node* head;
-    node* tail;
-} queue;
-
-node* newNode() {
-    node *n = (node*)malloc(sizeof(node));
-    n->val = NULL;
-    n->next = n;
-    return n;
-}
-
-queue* newQueue() {
-    queue *q = (queue*)malloc(sizeof(queue));
-    q->head = newNode();
-    q->tail = q->head;
-    return q;
-}
-
-void push(queue* q, char* val) {
-    q->tail->next = newNode();
-    q->tail->val = val;
-    q->tail = q->tail->next;
-}
-
-void* pop(queue *q) {
-    void* res = q->head->val;
-    node* old = q->head;
-    q->head = q->head->next;
-    if (q->head != old) {
-        free(old);
-    }
-    return res;
-}
-
-void freeQueue(queue *q) {
-    void *val;
-    while((val = pop(q))) {
-        free(val);
-    };
-    free(q->head);
-    free(q);
-}
-/* queue implementation finishes */
-
 /**
  * generates a random number between 0 and 1.0 (both inclusive)
  * @return (double)0-1.0
  */
-double randomProbability() {
+double randomProbability()
+{
     return ((double)rand()) / RAND_MAX;
 }
 
 /**
  * Define all MESSAGE_TAGs used in MPI commands instead of using plain integers to increase Readability & Writability
  */
-enum MessageType { TOP = 0, RIGHT = 1, BOTTOM = 2, LEFT = 3,
-        TOP_RIGHT = 4, BOTTOM_RIGHT = 5, BOTTOM_LEFT = 6, TOP_LEFT = 7,
-        ROWS = 20, COLUMNS = 21,
-        QUESTION = 500, ANSWER = 600, FINISHED = 700, IMAGE_START = 1000, FINAL_IMAGE_START = 60000 };
+enum MessageType
+{
+    TOP = 0,
+    RIGHT = 1,
+    BOTTOM = 2,
+    LEFT = 3,
+    TOP_RIGHT = 4,
+    BOTTOM_RIGHT = 5,
+    BOTTOM_LEFT = 6,
+    TOP_LEFT = 7,
+    ROWS = 20,
+    COLUMNS = 21,
+    QUESTION = 500,
+    ANSWER = 600,
+    FINISHED = 700,
+    IMAGE_START = 1000,
+    FINAL_IMAGE_START = 60000
+};
 
 /**
  * Simple wrapper for MPI_Send to prevent code repetition
@@ -87,7 +50,8 @@ enum MessageType { TOP = 0, RIGHT = 1, BOTTOM = 2, LEFT = 3,
  * @param destination
  * @param tag
  */
-void sendMessage(void* data, int count, MPI_Datatype datatype, int destination, int tag) {
+void sendMessage(void *data, int count, MPI_Datatype datatype, int destination, int tag)
+{
     MPI_Send(data, count, datatype, destination, tag, MPI_COMM_WORLD);
 }
 
@@ -99,7 +63,8 @@ void sendMessage(void* data, int count, MPI_Datatype datatype, int destination, 
  * @param source
  * @param tag
  */
-void receiveMessage(void* data, int count, MPI_Datatype datatype, int source, int tag) {
+void receiveMessage(void *data, int count, MPI_Datatype datatype, int source, int tag)
+{
     MPI_Recv(data, count, datatype, source, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
@@ -109,8 +74,9 @@ void receiveMessage(void* data, int count, MPI_Datatype datatype, int source, in
  * @param position
  * @param answerRequest
  */
-void initializeAnAnswer(int neighbour, int *position, MPI_Request *answerRequest) {
-    MPI_Irecv((void*)position, 1, MPI_INT, neighbour, QUESTION, MPI_COMM_WORLD, answerRequest);
+void initializeAnAnswer(int neighbour, int *position, MPI_Request *answerRequest)
+{
+    MPI_Irecv((void *)position, 1, MPI_INT, neighbour, QUESTION, MPI_COMM_WORLD, answerRequest);
 }
 
 /**
@@ -122,14 +88,17 @@ void initializeAnAnswer(int neighbour, int *position, MPI_Request *answerRequest
  * @param answerRequests
  * @param answerResponses
  */
-void initializeAnswers(int *neighbours, int *positions, MPI_Request* answerRequests, MPI_Request* answerResponses) {
+void initializeAnswers(int *neighbours, int *positions, MPI_Request *answerRequests, MPI_Request *answerResponses)
+{
     int direction;
-    for (direction = 0; direction < DIRECTIONS; ++direction) {
-        if (neighbours[direction] == -1) {
+    for (direction = 0; direction < DIRECTIONS; ++direction)
+    {
+        if (neighbours[direction] == -1)
+        {
             // no neighbour in this direction
             continue;
         }
-        initializeAnAnswer(neighbours[direction], positions+direction, answerRequests+direction);
+        initializeAnAnswer(neighbours[direction], positions + direction, answerRequests + direction);
         answerResponses[direction] = NULL;
     }
 }
@@ -144,21 +113,27 @@ void initializeAnswers(int *neighbours, int *positions, MPI_Request* answerReque
  * @param columnCenter
  * @return
  */
-int summer(char** subImage, int rows, int columns, int rowCenter, int columnCenter) {
-  int sum = 0;
-  int i, j;
-  for (i = rowCenter - 1; i <= rowCenter + 1; ++i) {
-      if (i >= 0 && i < rows) { // if within row boundaries
-          for (j = columnCenter - 1; j <= columnCenter + 1; ++j) {
-              if (j >= 0 && j < columns) { // if within column boundaries
-                  if (i != rowCenter || j != columnCenter) { // skip center
-                      sum += (int) subImage[i][j];
-                  }
-              }
-          }
-      }
-  }
-  return sum;
+int summer(char **subImage, int rows, int columns, int rowCenter, int columnCenter)
+{
+    int sum = 0;
+    int i, j;
+    for (i = rowCenter - 1; i <= rowCenter + 1; ++i)
+    {
+        if (i >= 0 && i < rows)
+        { // if within row boundaries
+            for (j = columnCenter - 1; j <= columnCenter + 1; ++j)
+            {
+                if (j >= 0 && j < columns)
+                { // if within column boundaries
+                    if (i != rowCenter || j != columnCenter)
+                    { // skip center
+                        sum += (int)subImage[i][j];
+                    }
+                }
+            }
+        }
+    }
+    return sum;
 };
 
 /**
@@ -174,61 +149,67 @@ int summer(char** subImage, int rows, int columns, int rowCenter, int columnCent
  * @param answerRequests
  * @param answerResponses
  */
-void answerAll(char** subImage, int rows, int columns, int *neighbours, int *positions,
-        MPI_Request* answerRequests, MPI_Request* answerResponses) {
+void answerAll(char **subImage, int rows, int columns, int *neighbours, int *positions,
+               MPI_Request *answerRequests, MPI_Request *answerResponses)
+{
     int position, direction, rowCenter, columnCenter;
     int flag;
-    for (direction = 0; direction < DIRECTIONS; ++direction) {
-        if (neighbours[direction] == -1) {
+    for (direction = 0; direction < DIRECTIONS; ++direction)
+    {
+        if (neighbours[direction] == -1)
+        {
             // no neighbour in this direction
             continue;
         }
-        MPI_Test(answerRequests+direction, &flag, MPI_STATUS_IGNORE);
-        if (flag) {
+        MPI_Test(answerRequests + direction, &flag, MPI_STATUS_IGNORE);
+        if (flag)
+        {
             position = positions[direction];
-            initializeAnAnswer(neighbours[direction], positions+direction, answerRequests+direction);
-            if (answerResponses[direction]) {
-                MPI_Wait(answerResponses+direction, MPI_STATUS_IGNORE);
+            initializeAnAnswer(neighbours[direction], positions + direction, answerRequests + direction);
+            if (answerResponses[direction])
+            {
+                MPI_Wait(answerResponses + direction, MPI_STATUS_IGNORE);
                 answerResponses[direction] = NULL;
             }
-            switch (direction) {
-                case TOP:
-                case TOP_LEFT:
-                case TOP_RIGHT:
-                    rowCenter = -1;
-                    break;
-                case BOTTOM:
-                case BOTTOM_LEFT:
-                case BOTTOM_RIGHT:
-                    rowCenter = rows;
-                    break;
-                case LEFT:
-                case RIGHT:
-                    rowCenter = position;
-                    break;
+            switch (direction)
+            {
+            case TOP:
+            case TOP_LEFT:
+            case TOP_RIGHT:
+                rowCenter = -1;
+                break;
+            case BOTTOM:
+            case BOTTOM_LEFT:
+            case BOTTOM_RIGHT:
+                rowCenter = rows;
+                break;
+            case LEFT:
+            case RIGHT:
+                rowCenter = position;
+                break;
             }
-            switch (direction) {
-                case LEFT:
-                case TOP_LEFT:
-                case BOTTOM_LEFT:
-                    columnCenter = -1;
-                    break;
-                case RIGHT:
-                case TOP_RIGHT:
-                case BOTTOM_RIGHT:
-                    columnCenter = columns;
-                    break;
-                case TOP:
-                case BOTTOM:
-                    columnCenter = position;
-                    break;
+            switch (direction)
+            {
+            case LEFT:
+            case TOP_LEFT:
+            case BOTTOM_LEFT:
+                columnCenter = -1;
+                break;
+            case RIGHT:
+            case TOP_RIGHT:
+            case BOTTOM_RIGHT:
+                columnCenter = columns;
+                break;
+            case TOP:
+            case BOTTOM:
+                columnCenter = position;
+                break;
             }
             int sum = summer(subImage, rows, columns, rowCenter, columnCenter);
-            MPI_Isend((void*)&sum, 1, MPI_INT, neighbours[direction], ANSWER,
-                    MPI_COMM_WORLD, answerResponses+direction);
+            MPI_Isend((void *)&sum, 1, MPI_INT, neighbours[direction], ANSWER,
+                      MPI_COMM_WORLD, answerResponses + direction);
         }
     }
-
 }
 
 /**
@@ -240,12 +221,15 @@ void answerAll(char** subImage, int rows, int columns, int *neighbours, int *pos
  * @param finishedResponses
  * @param finishedReqResCount
  */
-void sendFinishedAll(int* neighbours, MPI_Request* finishedRequests, MPI_Request* finishedResponses, int *finishedReqResCount) {
+void sendFinishedAll(int *neighbours, MPI_Request *finishedRequests, MPI_Request *finishedResponses, int *finishedReqResCount)
+{
     int direction;
-    for (direction = 0; direction < DIRECTIONS; ++direction) {
-        if (neighbours[direction] != -1) {
-            MPI_Isend(NULL, 0, MPI_INT, neighbours[direction], FINISHED, MPI_COMM_WORLD, finishedRequests+(*finishedReqResCount));
-            MPI_Irecv(NULL, 0, MPI_INT, neighbours[direction], FINISHED, MPI_COMM_WORLD, finishedResponses+(*finishedReqResCount));
+    for (direction = 0; direction < DIRECTIONS; ++direction)
+    {
+        if (neighbours[direction] != -1)
+        {
+            MPI_Isend(NULL, 0, MPI_INT, neighbours[direction], FINISHED, MPI_COMM_WORLD, finishedRequests + (*finishedReqResCount));
+            MPI_Irecv(NULL, 0, MPI_INT, neighbours[direction], FINISHED, MPI_COMM_WORLD, finishedResponses + (*finishedReqResCount));
             ++(*finishedReqResCount);
         }
     }
@@ -262,9 +246,11 @@ void sendFinishedAll(int* neighbours, MPI_Request* finishedRequests, MPI_Request
  * @param finishedReqResCount
  * @return
  */
-int testFinishedAll(int* neighbours, MPI_Request* finishedRequests, MPI_Request* finishedResponses, int *finishedReqResCount) {
+int testFinishedAll(int *neighbours, MPI_Request *finishedRequests, MPI_Request *finishedResponses, int *finishedReqResCount)
+{
     int requestResult = 1, responseResult = 1;
-    if (*finishedReqResCount > 0) {
+    if (*finishedReqResCount > 0)
+    {
         MPI_Testall(*finishedReqResCount, finishedRequests, &requestResult, MPI_STATUSES_IGNORE);
         MPI_Testall(*finishedReqResCount, finishedResponses, &responseResult, MPI_STATUSES_IGNORE);
     }
@@ -283,16 +269,17 @@ int testFinishedAll(int* neighbours, MPI_Request* finishedRequests, MPI_Request*
  * @param askResponses
  * @param askResponseValues
  */
-void askAsync(int neighbour, int position, MPI_Request* askRequests, int *askReqResCount,
-        MPI_Request* askResponses, int* askResponseValues
-    ) {
-    if (neighbour == -1) {
+void askAsync(int neighbour, int position, MPI_Request *askRequests, int *askReqResCount,
+              MPI_Request *askResponses, int *askResponseValues)
+{
+    if (neighbour == -1)
+    {
         // no neighbour in this direction
         return;
     }
-    MPI_Isend((void*)&position, 1, MPI_INT, neighbour, QUESTION, MPI_COMM_WORLD, askRequests+(*askReqResCount));
-    MPI_Irecv((void*)(askResponseValues+(*askReqResCount)), 1, MPI_INT, neighbour, ANSWER,
-            MPI_COMM_WORLD, askResponses+(*askReqResCount));
+    MPI_Isend((void *)&position, 1, MPI_INT, neighbour, QUESTION, MPI_COMM_WORLD, askRequests + (*askReqResCount));
+    MPI_Irecv((void *)(askResponseValues + (*askReqResCount)), 1, MPI_INT, neighbour, ANSWER,
+              MPI_COMM_WORLD, askResponses + (*askReqResCount));
     ++(*askReqResCount);
 }
 
@@ -303,9 +290,11 @@ void askAsync(int neighbour, int position, MPI_Request* askRequests, int *askReq
  * @param askResponses
  * @return
  */
-int testAskAll(MPI_Request* askRequests, int *askReqResCount, MPI_Request* askResponses) {
+int testAskAll(MPI_Request *askRequests, int *askReqResCount, MPI_Request *askResponses)
+{
     int requestResult = 1, responseResult = 1;
-    if (*askReqResCount > 0) {
+    if (*askReqResCount > 0)
+    {
         MPI_Testall(*askReqResCount, askRequests, &requestResult, MPI_STATUSES_IGNORE);
         MPI_Testall(*askReqResCount, askResponses, &responseResult, MPI_STATUSES_IGNORE);
     }
@@ -321,11 +310,15 @@ int testAskAll(MPI_Request* askRequests, int *askReqResCount, MPI_Request* askRe
  * @param askResponseValues
  * @return
  */
-int askResult(MPI_Request* askRequests, int *askReqResCount, MPI_Request* askResponses, int* askResponseValues) {
+int askResult(MPI_Request *askRequests, int *askReqResCount, MPI_Request *askResponses, int *askResponseValues)
+{
     // called after a success testAskAll all ask requests and responses so it's certain that they all did finish.
     int result = 0;
-    if((*askReqResCount) > 0) {;
-        while (*askReqResCount) {
+    if ((*askReqResCount) > 0)
+    {
+        ;
+        while (*askReqResCount)
+        {
             --(*askReqResCount);
             result += askResponseValues[(*askReqResCount)];
         }
@@ -342,7 +335,8 @@ int askResult(MPI_Request* askRequests, int *askReqResCount, MPI_Request* askRes
  * @param gammaValue
  * @return
  */
-int slave(int world_size, int world_rank, double beta, double gammaValue) {
+int slave(int world_size, int world_rank, double beta, double gammaValue)
+{
 
     char hn[99];
     int iterations = TOTAL_ITERATIONS / (world_size - 1);
@@ -352,15 +346,17 @@ int slave(int world_size, int world_rank, double beta, double gammaValue) {
     receiveMessage(&columns, 1, MPI_INT, MASTER_RANK, COLUMNS);
 
     int neighbours[DIRECTIONS], direction;
-    for (direction = 0; direction < DIRECTIONS; ++direction) {
-        receiveMessage(neighbours+direction, 1, MPI_INT, MASTER_RANK, direction);
+    for (direction = 0; direction < DIRECTIONS; ++direction)
+    {
+        receiveMessage(neighbours + direction, 1, MPI_INT, MASTER_RANK, direction);
     }
 
-    char* subImage[rows], initialSubImage[rows][columns];
+    char *subImage[rows], initialSubImage[rows][columns];
     int i;
-    for (i = 0; i < rows; ++i) {
+    for (i = 0; i < rows; ++i)
+    {
         receiveMessage(initialSubImage[i], columns, MPI_BYTE, MASTER_RANK, IMAGE_START + i);
-        subImage[i] = (char*)malloc(columns * sizeof(char));
+        subImage[i] = (char *)malloc(columns * sizeof(char));
         memcpy(subImage[i], initialSubImage[i], columns);
     }
 
@@ -380,9 +376,11 @@ int slave(int world_size, int world_rank, double beta, double gammaValue) {
     /* initialize all answer requests (Irecv for all neighbours for potentials questions in later) */
     initializeAnswers(neighbours, positions, answerRequests, answerResponses);
     /* initialize all answer requests done */
-    while(iterations --) {
-        if (iterations % 1000000 == 0) {
-            printf("slave %d (on node %s) started a new millionth iteration - left: %d\n", world_rank, hn,iterations);
+    while (iterations--)
+    {
+        if (iterations % 1000000 == 0)
+        {
+            printf("slave %d (on node %s) started a new millionth iteration - left: %d\n", world_rank, hn, iterations);
         }
         /* pick a random pixel */
         int rowPosition = rand() % rows;
@@ -392,31 +390,40 @@ int slave(int world_size, int world_rank, double beta, double gammaValue) {
         /* pick a random pixel done */
         /* sum neighbour cells */
         int sum = summer(subImage, rows, columns, rowPosition, columnPosition);
-        if (rowPosition == 0) {
+        if (rowPosition == 0)
+        {
             askAsync(neighbours[TOP], columnPosition, askRequests, &askReqResCount, askResponses, askResponseValues);
-            if (columnPosition == 0) {
+            if (columnPosition == 0)
+            {
                 askAsync(neighbours[TOP_LEFT], 0, askRequests, &askReqResCount, askResponses, askResponseValues);
             }
-            if (columnPosition == columns - 1) {
+            if (columnPosition == columns - 1)
+            {
                 askAsync(neighbours[TOP_RIGHT], 0, askRequests, &askReqResCount, askResponses, askResponseValues);
             }
         }
-        if (rowPosition == rows - 1) {
+        if (rowPosition == rows - 1)
+        {
             askAsync(neighbours[BOTTOM], columnPosition, askRequests, &askReqResCount, askResponses, askResponseValues);
-            if (columnPosition == 0) {
+            if (columnPosition == 0)
+            {
                 askAsync(neighbours[BOTTOM_LEFT], 0, askRequests, &askReqResCount, askResponses, askResponseValues);
             }
-            if (columnPosition == columns - 1) {
+            if (columnPosition == columns - 1)
+            {
                 askAsync(neighbours[BOTTOM_RIGHT], 0, askRequests, &askReqResCount, askResponses, askResponseValues);
             }
         }
-        if (columnPosition == 0) {
+        if (columnPosition == 0)
+        {
             askAsync(neighbours[LEFT], rowPosition, askRequests, &askReqResCount, askResponses, askResponseValues);
         }
-        if (columnPosition == columns - 1) {
+        if (columnPosition == columns - 1)
+        {
             askAsync(neighbours[RIGHT], rowPosition, askRequests, &askReqResCount, askResponses, askResponseValues);
         }
-        while (!testAskAll(askRequests, &askReqResCount, askResponses)) {
+        while (!testAskAll(askRequests, &askReqResCount, askResponses))
+        {
             /* answer neighbours' questions before waiting for answers for its questions -- prevents deadlock */
             answerAll(subImage, rows, columns, neighbours, positions, answerRequests, answerResponses);
             /* answer neighbours' questions done */
@@ -425,23 +432,25 @@ int slave(int world_size, int world_rank, double beta, double gammaValue) {
         /* sum neighbour cells done */
         /* calculate delta_e */
         // double deltaE = - 2 * subImage[rowPosition][columnPosition] * (gammaValue * initialSubImage[rowPosition][columnPosition] + beta * sum);
-        double deltaE = -2 * gammaValue * initialSubImage[rowPosition][columnPosition] * subImage[rowPosition][columnPosition]
-                -2 * beta * subImage[rowPosition][columnPosition] * sum;
+        double deltaE = -2 * gammaValue * initialSubImage[rowPosition][columnPosition] * subImage[rowPosition][columnPosition] - 2 * beta * subImage[rowPosition][columnPosition] * sum;
         // printf("delta: %f exp delta %f\n", deltaE, exp(deltaE));
         // deltaE = log(accept_probability)  *** accept_probability can be bigger than 1, since we skipped Min(1, acc_prob) ***
-        if (log(randomProbability()) <= deltaE) {
+        if (log(randomProbability()) <= deltaE)
+        {
             // if accepted, flip the pixel
             subImage[rowPosition][columnPosition] = -subImage[rowPosition][columnPosition];
         }
     }
     // dont finish yet, instead wait until all neighbours also finish
     sendFinishedAll(neighbours, finishedRequests, finishedResponses, &finishedReqResCount);
-    while (!testFinishedAll(neighbours, finishedRequests, finishedResponses, &finishedReqResCount)) {
+    while (!testFinishedAll(neighbours, finishedRequests, finishedResponses, &finishedReqResCount))
+    {
         // some neighbours are not finished yet, keep answering
         answerAll(subImage, rows, columns, neighbours, positions, answerRequests, answerResponses);
     }
-    
-    for (i = 0; i < rows; ++i) {
+
+    for (i = 0; i < rows; ++i)
+    {
         sendMessage(subImage[i], columns, MPI_BYTE, MASTER_RANK, FINAL_IMAGE_START + i);
         free(subImage[i]);
     }
@@ -459,12 +468,13 @@ int slave(int world_size, int world_rank, double beta, double gammaValue) {
  * @param grid
  * @return
  */
-int master(int world_size, int world_rank, char* input, char* output, int grid) {
+int master(int world_size, int world_rank, char *input, char *output, int grid)
+{
 
     FILE *inputFile, *outputFile;
     inputFile = fopen(input, "r");
 
-    queue* rowQueue = newQueue();
+    queue *rowQueue = newQueue();
     int rowCount = 0;
     int columnCount = 0;
 
@@ -472,53 +482,65 @@ int master(int world_size, int world_rank, char* input, char* output, int grid) 
     size_t len = 0;
     ssize_t read;
 
-    while ((read = getline(&line, &len, inputFile)) != -1) {
+    while ((read = getline(&line, &len, inputFile)) != -1)
+    {
         int i, cursor = 0, nextCursor, nextPixel;
-        char* row = NULL;
-        if (columnCount == 0) {
-            queue* columnQueue = newQueue();
-            while (sscanf(line + cursor, "%d%n", &nextPixel, &nextCursor) > 0) {
+        char *row = NULL;
+        if (columnCount == 0)
+        {
+            queue *columnQueue = newQueue();
+            while (sscanf(line + cursor, "%d%n", &nextPixel, &nextCursor) > 0)
+            {
                 cursor += nextCursor;
                 ++columnCount;
-                push(columnQueue, (void*)nextPixel);
+                push(columnQueue, (void *)nextPixel);
             }
-            row = (char*)malloc(columnCount * sizeof(char));
-            for (i = 0; i < columnCount; ++i) {
+            row = (char *)malloc(columnCount * sizeof(char));
+            for (i = 0; i < columnCount; ++i)
+            {
                 row[i] = (char)pop(columnQueue);
             }
             freeQueue(columnQueue);
-        } else {
-            row = (char*)malloc(columnCount * sizeof(char));
+        }
+        else
+        {
+            row = (char *)malloc(columnCount * sizeof(char));
             i = 0;
-            while(sscanf(line + cursor, "%d%n", &nextPixel, &nextCursor) > 0) {
+            while (sscanf(line + cursor, "%d%n", &nextPixel, &nextCursor) > 0)
+            {
                 cursor += nextCursor;
                 row[i++] = (char)nextPixel;
             }
         }
         ++rowCount;
-        push(rowQueue, (void*)row);
+        push(rowQueue, (void *)row);
     }
 
     int slaveCount = world_size - 1;
     int rowsPerSlave, columnsPerSlave, slavesPerRow;
-    if (grid) {
+    if (grid)
+    {
         int sqrtSlaveCount = sqrt(slaveCount);
         rowsPerSlave = rowCount / sqrtSlaveCount;
         columnsPerSlave = columnCount / sqrtSlaveCount;
         slavesPerRow = sqrtSlaveCount;
-        if (rowsPerSlave * sqrtSlaveCount != rowCount
-            || columnsPerSlave * sqrtSlaveCount != columnCount) {
+        if (rowsPerSlave * sqrtSlaveCount != rowCount || columnsPerSlave * sqrtSlaveCount != columnCount)
+        {
             fprintf(stderr, "Error (Grid Mode): rowCount or columnCount is not divisible "
                             "by the square root of slave count, \"sqrt(world_size - 1)\"\n");
             return 1;
         }
-    } else {
+    }
+    else
+    {
         rowsPerSlave = rowCount / slaveCount;
         columnsPerSlave = columnCount;
         slavesPerRow = 1;
-        if (rowsPerSlave * slaveCount != rowCount) {
+        if (rowsPerSlave * slaveCount != rowCount)
+        {
             fprintf(stderr, "Error (Row Mode): rowCount is not divisible by the slave count, "
-                            "\"world_size - 1\" = %d where row count is %d\n", world_size - 1, rowCount);
+                            "\"world_size - 1\" = %d where row count is %d\n",
+                    world_size - 1, rowCount);
         }
     }
 
@@ -526,7 +548,8 @@ int master(int world_size, int world_rank, char* input, char* output, int grid) 
     papi_time_start = PAPI_get_real_usec();
 
     int slaveRank;
-    for (slaveRank = 1; slaveRank <= slaveCount; ++slaveRank) {
+    for (slaveRank = 1; slaveRank <= slaveCount; ++slaveRank)
+    {
         sendMessage(&rowsPerSlave, 1, MPI_INT, slaveRank, ROWS);
         sendMessage(&columnsPerSlave, 1, MPI_INT, slaveRank, COLUMNS);
         int top = slaveRank <= slavesPerRow ? -1 : slaveRank - slavesPerRow;
@@ -537,7 +560,7 @@ int master(int world_size, int world_rank, char* input, char* output, int grid) 
         int bottomRight = (bottom == -1 || right == -1) ? -1 : slaveRank + slavesPerRow + 1;
         int bottomLeft = (bottom == -1 || left == -1) ? -1 : slaveRank + slavesPerRow - 1;
         int topLeft = (top == -1 || left == -1) ? -1 : slaveRank - slavesPerRow - 1;
-     //   printf("%d ranks => %d %d %d %d %d %d %d %d\n", slaveRank, top, right, bottom, left, topRight, bottomRight, bottomLeft, topLeft);
+        //   printf("%d ranks => %d %d %d %d %d %d %d %d\n", slaveRank, top, right, bottom, left, topRight, bottomRight, bottomLeft, topLeft);
         sendMessage(&top, 1, MPI_INT, slaveRank, TOP);
         sendMessage(&right, 1, MPI_INT, slaveRank, RIGHT);
         sendMessage(&bottom, 1, MPI_INT, slaveRank, BOTTOM);
@@ -547,12 +570,14 @@ int master(int world_size, int world_rank, char* input, char* output, int grid) 
         sendMessage(&bottomLeft, 1, MPI_INT, slaveRank, BOTTOM_LEFT);
         sendMessage(&topLeft, 1, MPI_INT, slaveRank, TOP_LEFT);
     }
-    char* row;
+    char *row;
     int rowNumber = 0, slaveRowNumber, columnNumber;
-    while((row = (char*)pop(rowQueue))) {
+    while ((row = (char *)pop(rowQueue)))
+    {
         int slaveRankStart = (rowNumber / rowsPerSlave) * slavesPerRow + 1;
         int slaveRowNumber = rowNumber % rowsPerSlave;
-        for (columnNumber = 0; columnNumber < columnCount; columnNumber += columnsPerSlave) {
+        for (columnNumber = 0; columnNumber < columnCount; columnNumber += columnsPerSlave)
+        {
             slaveRank = slaveRankStart + columnNumber / columnsPerSlave;
             sendMessage(row + columnNumber, columnsPerSlave, MPI_BYTE, slaveRank, IMAGE_START + slaveRowNumber);
         }
@@ -562,14 +587,15 @@ int master(int world_size, int world_rank, char* input, char* output, int grid) 
     freeQueue(rowQueue);
     printf("All slaves received their input from master, and starting working.\n");
 
-
     char finalResult[rowCount][columnCount];
-    for (rowNumber = 0; rowNumber < rowCount; ++rowNumber) {
-        for (columnNumber = 0; columnNumber < columnCount; columnNumber += columnsPerSlave) {
+    for (rowNumber = 0; rowNumber < rowCount; ++rowNumber)
+    {
+        for (columnNumber = 0; columnNumber < columnCount; columnNumber += columnsPerSlave)
+        {
             slaveRank = (rowNumber / rowsPerSlave) * slavesPerRow + columnNumber / columnsPerSlave + 1;
             slaveRowNumber = rowNumber % rowsPerSlave;
             receiveMessage(finalResult[rowNumber] + columnNumber, columnsPerSlave,
-                    MPI_BYTE, slaveRank, FINAL_IMAGE_START + slaveRowNumber);
+                           MPI_BYTE, slaveRank, FINAL_IMAGE_START + slaveRowNumber);
         }
     }
 
@@ -578,15 +604,17 @@ int master(int world_size, int world_rank, char* input, char* output, int grid) 
     papi_time_stop = PAPI_get_real_usec();
 
     outputFile = fopen(output, "w");
-    for (rowNumber = 0; rowNumber < rowCount; ++rowNumber) {
-        for (columnNumber = 0; columnNumber < columnCount; ++columnNumber) {
+    for (rowNumber = 0; rowNumber < rowCount; ++rowNumber)
+    {
+        for (columnNumber = 0; columnNumber < columnCount; ++columnNumber)
+        {
             fprintf(outputFile, "%d ", (int)finalResult[rowNumber][columnNumber]);
         }
         fprintf(outputFile, "\n");
     }
     printf("finished successfully!\n");
 
-    printf("Running time for %d processors: %dus\n", world_size, papi_time_stop-papi_time_start);
+    printf("Running time for %d processors: %dus\n", world_size, papi_time_stop - papi_time_start);
     return 0;
 }
 
@@ -596,8 +624,9 @@ int master(int world_size, int world_rank, char* input, char* output, int grid) 
  * @param argv
  * @return
  */
-int main(int argc, char** argv) {
-    
+int main(int argc, char **argv)
+{
+
     // MPI INITIALIZATIONS
     MPI_Init(NULL, NULL);
     int world_size;
@@ -608,39 +637,43 @@ int main(int argc, char** argv) {
     int error = 0;
     srand(time(NULL));
 
-    if (world_rank == MASTER_RANK) { // VALIDATIONS & RUN MASTER
+    if (world_rank == MASTER_RANK)
+    { // VALIDATIONS & RUN MASTER
         /* make arg checks in master to prevent duplicate error logs */
-        if (argc < 5 || argc > 6) {
+        if (argc < 5 || argc > 6)
+        {
             fprintf(stderr, "Please, run the program as \n"
                             "\"denoiser <input> <output> <beta> <pi>\", or as \n"
-                            "\"denoiser <input> <output> <beta> <pi> row\n"
-            );
+                            "\"denoiser <input> <output> <beta> <pi> row\n");
             return 1;
         }
         int grid = argc != 6 || strcmp(argv[5], "row") != 0;
-        if (grid && sqrt(world_size - 1) * sqrt(world_size - 1) != world_size - 1) {
+        if (grid && sqrt(world_size - 1) * sqrt(world_size - 1) != world_size - 1)
+        {
             fprintf(stderr, "When running in grid mode, the number of slaves "
                             "(number of processors - 1) must be a square number!\n");
             return 1;
         }
         fprintf(stdout, "Running in %s mode.\n", grid ? "grid" : "row");
-        if ((error = master(world_size, world_rank, argv[1], argv[2], grid))) {
+        if ((error = master(world_size, world_rank, argv[1], argv[2], grid)))
+        {
             fprintf(stderr, "Error in master");
             return error;
         };
-    } else { // CALCULATE GAMMA AND RUN SLAVE
+    }
+    else
+    { // CALCULATE GAMMA AND RUN SLAVE
         double beta = atof(argv[3]);
         double pi = atof(argv[4]);
         double gammaValue = log((1 - pi) / pi) / 2;
         // named gammaValue instead of gamma bc of the below warning:
         // warning: 'gamma' is deprecated: first deprecated in macOS 10.9 [-Wdeprecated-declarations]
-        if ((error = slave(world_size, world_rank, beta, gammaValue))) {
+        if ((error = slave(world_size, world_rank, beta, gammaValue)))
+        {
             fprintf(stderr, "Error in slave");
             return error;
         };
     }
 
-
     MPI_Finalize();
-
 }
