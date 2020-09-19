@@ -465,10 +465,9 @@ int slave(int world_size, int world_rank, double beta, double gammaValue)
  * @param world_rank
  * @param input
  * @param output
- * @param grid
  * @return
  */
-int master(int world_size, int world_rank, char *input, char *output, int grid)
+int master(int world_size, int world_rank, char *input, char *output)
 {
 
     FILE *inputFile, *outputFile;
@@ -518,30 +517,16 @@ int master(int world_size, int world_rank, char *input, char *output, int grid)
 
     int slaveCount = world_size - 1;
     int rowsPerSlave, columnsPerSlave, slavesPerRow;
-    if (grid)
+    
+    
+    rowsPerSlave = rowCount / slaveCount;
+    columnsPerSlave = columnCount;
+    slavesPerRow = 1;
+    if (rowsPerSlave * slaveCount != rowCount)
     {
-        int sqrtSlaveCount = sqrt(slaveCount);
-        rowsPerSlave = rowCount / sqrtSlaveCount;
-        columnsPerSlave = columnCount / sqrtSlaveCount;
-        slavesPerRow = sqrtSlaveCount;
-        if (rowsPerSlave * sqrtSlaveCount != rowCount || columnsPerSlave * sqrtSlaveCount != columnCount)
-        {
-            fprintf(stderr, "Error (Grid Mode): rowCount or columnCount is not divisible "
-                            "by the square root of slave count, \"sqrt(world_size - 1)\"\n");
-            return 1;
-        }
-    }
-    else
-    {
-        rowsPerSlave = rowCount / slaveCount;
-        columnsPerSlave = columnCount;
-        slavesPerRow = 1;
-        if (rowsPerSlave * slaveCount != rowCount)
-        {
-            fprintf(stderr, "Error (Row Mode): rowCount is not divisible by the slave count, "
-                            "\"world_size - 1\" = %d where row count is %d\n",
-                    world_size - 1, rowCount);
-        }
+        fprintf(stderr, "Error (Row Mode): rowCount is not divisible by the slave count, "
+                        "\"world_size - 1\" = %d where row count is %d\n",
+                world_size - 1, rowCount);
     }
 
     long_long papi_time_start, papi_time_stop;
@@ -570,17 +555,16 @@ int master(int world_size, int world_rank, char *input, char *output, int grid)
         sendMessage(&bottomLeft, 1, MPI_INT, slaveRank, BOTTOM_LEFT);
         sendMessage(&topLeft, 1, MPI_INT, slaveRank, TOP_LEFT);
     }
+    
     char *row;
-    int rowNumber = 0, slaveRowNumber, columnNumber;
+    int rowNumber = 0, slaveRowNumber;
+    
     while ((row = (char *)pop(rowQueue)))
     {
         int slaveRankStart = (rowNumber / rowsPerSlave) * slavesPerRow + 1;
         int slaveRowNumber = rowNumber % rowsPerSlave;
-        for (columnNumber = 0; columnNumber < columnCount; columnNumber += columnsPerSlave)
-        {
-            slaveRank = slaveRankStart + columnNumber / columnsPerSlave;
-            sendMessage(row + columnNumber, columnsPerSlave, MPI_BYTE, slaveRank, IMAGE_START + slaveRowNumber);
-        }
+        
+        sendMessage(row, columnsPerSlave, MPI_BYTE, slaveRankStart, IMAGE_START + slaveRowNumber);
         free(row);
         ++rowNumber;
     }
@@ -590,19 +574,18 @@ int master(int world_size, int world_rank, char *input, char *output, int grid)
     char finalResult[rowCount][columnCount];
     for (rowNumber = 0; rowNumber < rowCount; ++rowNumber)
     {
-        for (columnNumber = 0; columnNumber < columnCount; columnNumber += columnsPerSlave)
-        {
-            slaveRank = (rowNumber / rowsPerSlave) * slavesPerRow + columnNumber / columnsPerSlave + 1;
+            slaveRank = (rowNumber / rowsPerSlave) * slavesPerRow + 1;
             slaveRowNumber = rowNumber % rowsPerSlave;
-            receiveMessage(finalResult[rowNumber] + columnNumber, columnsPerSlave,
+            receiveMessage(finalResult[rowNumber], columnsPerSlave,
                            MPI_BYTE, slaveRank, FINAL_IMAGE_START + slaveRowNumber);
-        }
+
     }
 
     printf("finished calculations and communciations, started writing to output\n");
 
     papi_time_stop = PAPI_get_real_usec();
 
+    int columnNumber;
     outputFile = fopen(output, "w");
     for (rowNumber = 0; rowNumber < rowCount; ++rowNumber)
     {
@@ -640,22 +623,15 @@ int main(int argc, char **argv)
     if (world_rank == MASTER_RANK)
     { // VALIDATIONS & RUN MASTER
         /* make arg checks in master to prevent duplicate error logs */
-        if (argc < 5 || argc > 6)
+        if (argc != 5)
         {
             fprintf(stderr, "Please, run the program as \n"
-                            "\"denoiser <input> <output> <beta> <pi>\", or as \n"
-                            "\"denoiser <input> <output> <beta> <pi> row\n");
+                            "\"denoiser <input> <output> <beta> <pi>\"\n");
             return 1;
         }
-        int grid = argc != 6 || strcmp(argv[5], "row") != 0;
-        if (grid && sqrt(world_size - 1) * sqrt(world_size - 1) != world_size - 1)
-        {
-            fprintf(stderr, "When running in grid mode, the number of slaves "
-                            "(number of processors - 1) must be a square number!\n");
-            return 1;
-        }
-        fprintf(stdout, "Running in %s mode.\n", grid ? "grid" : "row");
-        if ((error = master(world_size, world_rank, argv[1], argv[2], grid)))
+
+        fprintf(stdout, "Running in row mode.\n");
+        if ((error = master(world_size, world_rank, argv[1], argv[2])))
         {
             fprintf(stderr, "Error in master");
             return error;
