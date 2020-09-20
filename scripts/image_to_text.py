@@ -13,6 +13,9 @@ file = open(sys.argv[2], "w")
 txt = list(img)
 for i in txt:
 	for j in i:
-		file.write(str(j) + " ")
+		if j == 1:
+			file.write(" " + str(j) + " ")
+		else:
+			file.write(str(j) + " ")
 	file.write('\n')
 file.close()
