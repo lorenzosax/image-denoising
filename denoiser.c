@@ -475,7 +475,8 @@ void *thread(void *args) {
     args_t *arg = (args_t *)args;
 
     FILE* file = fopen(arg->file_name, "r");
-    fseek (file , arg->start_index, SEEK_SET);
+    if(c = fseek (file , arg->start_index, 0) != 0) {
+    }
 
     for(i = arg->start_index; i < arg->end_index; i++)
     {
@@ -484,6 +485,7 @@ void *thread(void *args) {
             printf("%d", arg->matrix[i][j]);
         }
     }
+    
     pthread_exit(NULL);
 
 }
@@ -515,27 +517,31 @@ int master(int world_size, int world_rank, char *input, char *output)
 
 
     int i;
-    args_t *args = (args_t *)malloc(sizeof(args_t));
+    args_t *args = (args_t *)malloc(sizeof(args_t *));
 
     
     args->matrix = matrix;
     args->file_name = input;
-
     for (i = 0; i < THREADS; i++) {
 
         args->start_index = i*(N/THREADS);
         args->end_index = args->start_index+((N/THREADS)-1);
-        if (pthread_create(&threads[i], NULL, thread, &args) != 0) {
-            fprintf(stderr, "pthread_create failed!\n");
+        printf("%d %d\n", args->start_index, args->end_index);
+
+        if (pthread_create(&threads[i], &attr, thread,(void *)&args) != 0) {
+            //fprintf(stderr, "pthread_create failed!\n");
+            printf("pthread_create failed!\n");
             return EXIT_FAILURE;
         }
 
     }
-printf("ok");
+
     
-    // for(i = 0; i < THREADS; i++) {
-    //     pthread_join(&threads[i], NULL);
-    // }
+    for(i = 0; i < THREADS; i++) {
+         pthread_join(&threads[i], NULL);
+     }
+
+     pthread_exit(NULL);
 
     // int j;
     // for(i = 0; i<N; i++) {
@@ -632,8 +638,9 @@ printf("ok");
 
 
     printf("Running time for %d processors: %dus\n", world_size, papi_time_stop - papi_time_start);
-    pthread_exit(NULL);
-    //return 0;
+    
+   
+    return 0;
 }
 
 /**
