@@ -528,7 +528,7 @@ int master(int world_size, int world_rank, char *input, char *output)
         args->end_index = args->start_index+((N/THREADS)-1);
         printf("%d %d\n", args->start_index, args->end_index);
 
-        if (pthread_create(&threads[i], &attr, thread,(void *)&args) != 0) {
+        if (pthread_create(&threads[i], &attr, thread,(void *)args) != 0) {
             //fprintf(stderr, "pthread_create failed!\n");
             printf("pthread_create failed!\n");
             return EXIT_FAILURE;
@@ -538,7 +538,7 @@ int master(int world_size, int world_rank, char *input, char *output)
 
     
     for(i = 0; i < THREADS; i++) {
-         pthread_join(&threads[i], NULL);
+         pthread_join(threads[i], NULL);
      }
 
      pthread_exit(NULL);
