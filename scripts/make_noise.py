@@ -15,6 +15,6 @@ for i in txt:
 		if j > 0:
 			file.write("  " + str(int(j)))
 		else:
-			file.write(str(" " + int(j)))
+			file.write(" " + str(int(j)))
 	file.write('\n')
 file.close()
