@@ -5,8 +5,8 @@
 // #include <papi.h>
 #include <string.h>
 
-#define N 8
-#define THREADS 2
+#define N 200
+#define THREADS 20
 
 typedef struct fileinfo 
 {
@@ -16,7 +16,6 @@ typedef struct fileinfo
     int id;
 } fileinfo;
 
-pthread_mutex_t mutex;
 int matrix[N][N];
 
 void *thread(void *);
@@ -24,74 +23,81 @@ void *thread(void *);
 int main(int argc, char **argv)
 {
     int i, j;
+	char *file_name = argv[1];
+	char *file_name_output = argv[2];
 
     pthread_t threads[THREADS];
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    pthread_mutex_init(&mutex, NULL);
 
     for (i = 0; i < THREADS; i++) {
         fileinfo *finfo = (fileinfo *)malloc(sizeof(fileinfo));
-        char file_name[] = "file.txt";
         finfo->file_name = file_name;
         finfo->start_index = i*(N/THREADS);
         finfo->end_index = finfo->start_index+(N/THREADS)-1;
         finfo->id = i;
-        printf("%d %d\n", finfo->start_index, finfo->end_index);
+        // printf("%d %d\n", finfo->start_index, finfo->end_index);
 
         if (pthread_create(&threads[i], NULL, thread, (void *)finfo) != 0) {
             printf("pthread_create failed!\n");
             return EXIT_FAILURE;
         }
-
     }
 
     for(i = 0; i < THREADS; i++) {
     	pthread_join(threads[i], NULL);
     }
 
-	printf("\nECCO\n");
+	printf("\nPRINTING TO FILE...\n");
+	FILE* file = fopen(file_name_output, "w");
     for(i = 0; i < N; i++) {
     	for(j = 0; j < N; j++) {
-		 	printf("%d ", matrix[i][j]);
+    		if (matrix[i][j] < 0) {
+    			fprintf(file, " %d", matrix[i][j]);
+    		} else {
+    			fprintf(file, "  %d", matrix[i][j]);
+    		}
 		}
-		printf("\n");
+		fprintf(file, "\n");
 	}
+	fclose(file);
 
 	pthread_exit(NULL);
-    // return 0;
+}
+
+int gotospecificline(FILE* file, int nextLine){
+	int i;
+	char *line = NULL;
+	size_t len = 0;
+	for (i=0; i < nextLine; i++){
+		getline(&line, &len, file);
+	}
+	return 0;
 }
 
 void *thread(void *args)
 {
     int i, j;
+    char *line = NULL;
     ssize_t c;
     fileinfo *finfo = (fileinfo *) args;
 
-	pthread_mutex_lock(&mutex);
-
-    printf("\nThread\n");
+    // printf("\nThread\n");
 
 	FILE* file = fopen(finfo->file_name, "r");
 
-	int t = 3*N*finfo->start_index;
-	if (finfo->id == 1) {
-		t += 8;
-		printf("t = %d \n", t);
-	}
-   	if(c = fseek (file , t, SEEK_SET) != 0) {
+    size_t length = 0;
+
+   	if(c = gotospecificline(file, finfo->start_index) != 0) {
         printf("Error fseek");
 	}
-
-    char *line = NULL;
-    size_t length = 0;
 
 	printf("%d %d\n", finfo->start_index, finfo->end_index);
     for(i = finfo->start_index; i <= finfo->end_index; i++)
     {
         getline(&line, &length, file);
-		printf("%s\n", line);
+		printf("Line: %s\n", line);
         char *tmp = NULL;
         
        	for(j = 0; j < N; j++) {
@@ -106,7 +112,4 @@ void *thread(void *args)
     }
     
     fclose(file);
-
-    pthread_mutex_unlock(&mutex);
-    // pthread_exit(NULL);
 }
