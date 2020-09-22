@@ -62,6 +62,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    long_long papi_time_start, papi_time_stop;
+    papi_time_start = PAPI_get_real_usec();
+    
     double beta = atof(argv[3]);
     double pi = atof(argv[4]);
     double gammaValue = log((1 - pi) / pi) / 2;
@@ -127,9 +130,6 @@ int main(int argc, char **argv)
     // region Calculations
     int iterations = TOTAL_ITERATIONS;
 
-    long_long papi_time_start, papi_time_stop;
-    papi_time_start = PAPI_get_real_usec();
-
     while (iterations--)
     {
         if (iterations % 1000000 == 0)
@@ -158,9 +158,6 @@ int main(int argc, char **argv)
 
     printf("finished calculations, started writing to output\n");
 
-    papi_time_stop = PAPI_get_real_usec();
-    printf("Running time %dus\n", papi_time_stop - papi_time_start);
-
     int rowNumber, columnNumber;
     outputFile = fopen(output, "w");
     for (rowNumber = 0; rowNumber < rowCount; ++rowNumber)
@@ -171,6 +168,8 @@ int main(int argc, char **argv)
         }
         fprintf(outputFile, "\n");
     }
+    papi_time_stop = PAPI_get_real_usec();
+    printf("Running time %dus\n", papi_time_stop - papi_time_start);
     printf("finished successfully!\n");
 
     // endregion
