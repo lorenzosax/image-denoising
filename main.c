@@ -3,12 +3,12 @@
 #include <time.h>
 #include <pthread.h>
 #include <math.h>
-//#include <papi.h>
+#include <papi.h>
 #include <string.h>
 
-#define N 200
+#define N 2500
 #define THREADS 10
-#define THREADSWORKER 5
+#define THREADSWORKER 25
 #define TOTAL_ITERATIONS 500000
 
 typedef struct fileinfo
@@ -37,8 +37,8 @@ void *worker(void *);
 
 int main(int argc, char **argv)
 {
-    /*long_long papi_time_start, papi_time_stop;
-    papi_time_start = PAPI_get_real_usec();*/
+    long_long papi_time_start, papi_time_stop;
+    papi_time_start = PAPI_get_real_usec();
     int i, j;
     char *file_name = argv[1];
     char *file_name_output = argv[2];
@@ -111,8 +111,8 @@ int main(int argc, char **argv)
         fprintf(file, "\n");
     }
     fclose(file);
-    /*papi_time_stop = PAPI_get_real_usec();
-    printf("Running time: %dus\n", papi_time_stop - papi_time_start);*/
+    papi_time_stop = PAPI_get_real_usec();
+    printf("Running time: %dus\n", papi_time_stop - papi_time_start);
 
     pthread_exit(NULL);
 }
@@ -220,7 +220,7 @@ void *worker(void * arg)
 		int rowCount = tinfo->end_row - tinfo->start_row + 1;
 
 		/* sum neighbour cells */
-		int sum = summer(rowCount, N, rowPosition, columnPosition);
+		int sum = summer(N, N, rowPosition, columnPosition);
 
 		/* calculate delta_e */
 		double deltaE = -2 * gammaValue * matrix[rowPosition][columnPosition] * finalmatrix[rowPosition][columnPosition]
