@@ -227,15 +227,15 @@ void *worker(void * arg)
 			- 2 * beta * finalmatrix[rowPosition][columnPosition] * sum;
 
 		if (iterations == 3000002) {
-			printf("Thread id: %d ha delta pari a %d, e ha log(randomProbability):%d\n", tinfo->id, deltaE, log(randomProbability()));
+			//printf("Thread id: %d ha delta pari a %d, e ha log(randomProbability):%d\n", tinfo->id, deltaE, log(randomProbability()));
 		}
 
 		if (log(randomProbability()) <= deltaE)
 		{
 			// flip the pixel
-			count ++;
+			//count ++;
 			finalmatrix[rowPosition][columnPosition] = -finalmatrix[rowPosition][columnPosition];
 		}
 	}
-	printf("Thread id: %d ha fatto %d flip\n", tinfo->id, count);
+	//printf("Thread id: %d ha fatto %d flip\n", tinfo->id, count);
 }
