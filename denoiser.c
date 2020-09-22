@@ -4,12 +4,23 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <pthread.h>
 #include <papi.h>
 #include "queue.c"
 
 #define TOTAL_ITERATIONS 5000000
 #define MASTER_RANK 0
 #define DIRECTIONS 8
+#define N 8
+#define THREADS 4 
+
+typedef struct args_t 
+{
+    int **matrix;
+    char* file_name;
+    int start_index;
+    int end_index;
+} args_t;
 
 /**
  * generates a random number between 0 and 1.0 (both inclusive)
@@ -458,6 +469,27 @@ int slave(int world_size, int world_rank, double beta, double gammaValue)
     return 0;
 }
 
+void *thread(void *args) {
+    int i,j;
+    int c;
+    args_t *arg = (args_t *)args;
+
+    FILE* file = fopen(arg->file_name, "r");
+    if(c = fseek (file , arg->start_index, 0) != 0) {
+    }
+
+    for(i = arg->start_index; i < arg->end_index; i++)
+    {
+        for(j = 0; j < N; j++) {
+            fscanf(file, "%d", arg->matrix[i][j]);
+            printf("%d", arg->matrix[i][j]);
+        }
+    }
+    
+    pthread_exit(NULL);
+
+}
+
 /**
  * logic for master process
  *
@@ -465,83 +497,72 @@ int slave(int world_size, int world_rank, double beta, double gammaValue)
  * @param world_rank
  * @param input
  * @param output
- * @param grid
  * @return
  */
-int master(int world_size, int world_rank, char *input, char *output, int grid)
+int master(int world_size, int world_rank, char *input, char *output)
 {
 
-    FILE *inputFile, *outputFile;
-    inputFile = fopen(input, "r");
+    int matrix[N][N];
 
-    queue *rowQueue = newQueue();
     int rowCount = 0;
     int columnCount = 0;
 
     char *line = NULL;
     size_t len = 0;
-    ssize_t read;
+    
+    pthread_t threads[THREADS];
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    while ((read = getline(&line, &len, inputFile)) != -1)
-    {
-        int i, cursor = 0, nextCursor, nextPixel;
-        char *row = NULL;
-        if (columnCount == 0)
-        {
-            queue *columnQueue = newQueue();
-            while (sscanf(line + cursor, "%d%n", &nextPixel, &nextCursor) > 0)
-            {
-                cursor += nextCursor;
-                ++columnCount;
-                push(columnQueue, (void *)nextPixel);
-            }
-            row = (char *)malloc(columnCount * sizeof(char));
-            for (i = 0; i < columnCount; ++i)
-            {
-                row[i] = (char)pop(columnQueue);
-            }
-            freeQueue(columnQueue);
+
+    int i;
+    args_t *args = (args_t *)malloc(sizeof(args_t *));
+
+    
+    args->matrix = matrix;
+    args->file_name = input;
+    for (i = 0; i < THREADS; i++) {
+
+        args->start_index = i*(N/THREADS);
+        args->end_index = args->start_index+((N/THREADS)-1);
+        printf("%d %d\n", args->start_index, args->end_index);
+
+        if (pthread_create(&threads[i], &attr, thread,(void *)args) != 0) {
+            //fprintf(stderr, "pthread_create failed!\n");
+            printf("pthread_create failed!\n");
+            return EXIT_FAILURE;
         }
-        else
-        {
-            row = (char *)malloc(columnCount * sizeof(char));
-            i = 0;
-            while (sscanf(line + cursor, "%d%n", &nextPixel, &nextCursor) > 0)
-            {
-                cursor += nextCursor;
-                row[i++] = (char)nextPixel;
-            }
-        }
-        ++rowCount;
-        push(rowQueue, (void *)row);
+
     }
+
+    
+    for(i = 0; i < THREADS; i++) {
+         pthread_join(threads[i], NULL);
+     }
+
+     pthread_exit(NULL);
+
+    // int j;
+    // for(i = 0; i<N; i++) {
+        
+    //             printf("\n");
+    //     for(j = 0; j<N; j++)
+    //         printf("%d", matrix[i][j]);
+    // } 
+
 
     int slaveCount = world_size - 1;
-    int rowsPerSlave, columnsPerSlave, slavesPerRow;
-    if (grid)
+    int rowsPerSlave, columnsPerSlave, slavesPerRow = 1;
+    
+    rowsPerSlave = rowCount / slaveCount;
+    columnsPerSlave = columnCount;
+    
+    if (rowsPerSlave * slaveCount != rowCount)
     {
-        int sqrtSlaveCount = sqrt(slaveCount);
-        rowsPerSlave = rowCount / sqrtSlaveCount;
-        columnsPerSlave = columnCount / sqrtSlaveCount;
-        slavesPerRow = sqrtSlaveCount;
-        if (rowsPerSlave * sqrtSlaveCount != rowCount || columnsPerSlave * sqrtSlaveCount != columnCount)
-        {
-            fprintf(stderr, "Error (Grid Mode): rowCount or columnCount is not divisible "
-                            "by the square root of slave count, \"sqrt(world_size - 1)\"\n");
-            return 1;
-        }
-    }
-    else
-    {
-        rowsPerSlave = rowCount / slaveCount;
-        columnsPerSlave = columnCount;
-        slavesPerRow = 1;
-        if (rowsPerSlave * slaveCount != rowCount)
-        {
-            fprintf(stderr, "Error (Row Mode): rowCount is not divisible by the slave count, "
-                            "\"world_size - 1\" = %d where row count is %d\n",
-                    world_size - 1, rowCount);
-        }
+        fprintf(stderr, "Error (Row Mode): rowCount is not divisible by the slave count, "
+                        "\"world_size - 1\" = %d where row count is %d\n",
+                world_size - 1, rowCount);
     }
 
     long_long papi_time_start, papi_time_stop;
@@ -570,40 +591,41 @@ int master(int world_size, int world_rank, char *input, char *output, int grid)
         sendMessage(&bottomLeft, 1, MPI_INT, slaveRank, BOTTOM_LEFT);
         sendMessage(&topLeft, 1, MPI_INT, slaveRank, TOP_LEFT);
     }
-    char *row;
-    int rowNumber = 0, slaveRowNumber, columnNumber;
-    while ((row = (char *)pop(rowQueue)))
+    
+
+    int rowNumber, slaveRowNumber;
+
+    for(rowNumber=0; rowNumber < N; rowNumber++)
     {
         int slaveRankStart = (rowNumber / rowsPerSlave) * slavesPerRow + 1;
         int slaveRowNumber = rowNumber % rowsPerSlave;
-        for (columnNumber = 0; columnNumber < columnCount; columnNumber += columnsPerSlave)
-        {
-            slaveRank = slaveRankStart + columnNumber / columnsPerSlave;
-            sendMessage(row + columnNumber, columnsPerSlave, MPI_BYTE, slaveRank, IMAGE_START + slaveRowNumber);
-        }
-        free(row);
-        ++rowNumber;
+        
+        sendMessage(matrix[rowNumber], columnsPerSlave,
+                            MPI_BYTE, slaveRankStart, IMAGE_START + slaveRowNumber);
+
     }
-    freeQueue(rowQueue);
+
     printf("All slaves received their input from master, and starting working.\n");
 
     char finalResult[rowCount][columnCount];
+
     for (rowNumber = 0; rowNumber < rowCount; ++rowNumber)
     {
-        for (columnNumber = 0; columnNumber < columnCount; columnNumber += columnsPerSlave)
-        {
-            slaveRank = (rowNumber / rowsPerSlave) * slavesPerRow + columnNumber / columnsPerSlave + 1;
+            slaveRank = (rowNumber / rowsPerSlave) * slavesPerRow + 1;
             slaveRowNumber = rowNumber % rowsPerSlave;
-            receiveMessage(finalResult[rowNumber] + columnNumber, columnsPerSlave,
+            receiveMessage(finalResult[rowNumber], columnsPerSlave,
                            MPI_BYTE, slaveRank, FINAL_IMAGE_START + slaveRowNumber);
-        }
+
     }
 
     printf("finished calculations and communciations, started writing to output\n");
 
     papi_time_stop = PAPI_get_real_usec();
 
-    outputFile = fopen(output, "w");
+    int columnNumber;
+
+    FILE *outputFile = fopen(output, "w");
+
     for (rowNumber = 0; rowNumber < rowCount; ++rowNumber)
     {
         for (columnNumber = 0; columnNumber < columnCount; ++columnNumber)
@@ -614,7 +636,10 @@ int master(int world_size, int world_rank, char *input, char *output, int grid)
     }
     printf("finished successfully!\n");
 
+
     printf("Running time for %d processors: %dus\n", world_size, papi_time_stop - papi_time_start);
+    
+   
     return 0;
 }
 
@@ -640,22 +665,15 @@ int main(int argc, char **argv)
     if (world_rank == MASTER_RANK)
     { // VALIDATIONS & RUN MASTER
         /* make arg checks in master to prevent duplicate error logs */
-        if (argc < 5 || argc > 6)
+        if (argc != 5)
         {
             fprintf(stderr, "Please, run the program as \n"
-                            "\"denoiser <input> <output> <beta> <pi>\", or as \n"
-                            "\"denoiser <input> <output> <beta> <pi> row\n");
+                            "\"denoiser <input> <output> <beta> <pi>\"\n");
             return 1;
         }
-        int grid = argc != 6 || strcmp(argv[5], "row") != 0;
-        if (grid && sqrt(world_size - 1) * sqrt(world_size - 1) != world_size - 1)
-        {
-            fprintf(stderr, "When running in grid mode, the number of slaves "
-                            "(number of processors - 1) must be a square number!\n");
-            return 1;
-        }
-        fprintf(stdout, "Running in %s mode.\n", grid ? "grid" : "row");
-        if ((error = master(world_size, world_rank, argv[1], argv[2], grid)))
+
+        fprintf(stdout, "Running in row mode.\n");
+        if ((error = master(world_size, world_rank, argv[1], argv[2])))
         {
             fprintf(stderr, "Error in master");
             return error;

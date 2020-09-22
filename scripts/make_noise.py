@@ -12,6 +12,9 @@ file = open(sys.argv[3], "w")
 txt = list(X)
 for i in txt:
 	for j in i:
-		file.write(str(int(j)) + " ")
+		if j > 0:
+			file.write("  " + str(int(j)))
+		else:
+			file.write(" " + str(int(j)))
 	file.write('\n')
 file.close()
