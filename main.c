@@ -6,10 +6,10 @@
 #include <papi.h>
 #include <string.h>
 
-#define N 2500
+#define N 10000
 #define THREADS 10
-#define THREADSWORKER 25
-#define TOTAL_ITERATIONS 500000
+#define THREADSWORKER 10
+#define TOTAL_ITERATIONS 50000
 
 typedef struct fileinfo
 {
