@@ -52,12 +52,6 @@ Mkfile.old
 dkms.conf
 
 # General
-denoiser
-sequential
-main
-main_sequential
-denoiser.exe
-sequential.exe
-main.exe
-main_sequential.exe
 .idea
+denoiser
+denoiser.exe

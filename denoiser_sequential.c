@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <papi.h>
+//#include <papi.h>
 #include "queue.c"
 
 #define TOTAL_ITERATIONS 5000000
@@ -62,8 +62,8 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    long_long papi_time_start, papi_time_stop;
-    papi_time_start = PAPI_get_real_usec();
+    // long_long papi_time_start, papi_time_stop;
+    // papi_time_start = PAPI_get_real_usec();
 
     double beta = atof(argv[3]);
     double pi = atof(argv[4]);
@@ -168,8 +168,8 @@ int main(int argc, char **argv)
         }
         fprintf(outputFile, "\n");
     }
-    papi_time_stop = PAPI_get_real_usec();
-    printf("Running time %dus\n", papi_time_stop - papi_time_start);
+    // papi_time_stop = PAPI_get_real_usec();
+    // printf("Running time %dus\n", papi_time_stop - papi_time_start);
     printf("finished successfully!\n");
 
     // endregion

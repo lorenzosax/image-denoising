@@ -25,7 +25,7 @@ $ mpicc denoiser.c -o denoiser -lm
 $ ./denoiser <input_file> <output_file> <beta> <pi>
 ```
 
-### How to compile for Pthreads version
+### How to run for Pthreads version
 
 ```sh
 $ ./denoiser <input_file> <output_file> <beta> <pi>

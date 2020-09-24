@@ -3,7 +3,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <math.h>
-#include <papi.h>
+//#include <papi.h>
 #include <string.h>
 
 #define N 10000
@@ -37,8 +37,8 @@ void *worker(void *);
 
 int main(int argc, char **argv)
 {
-    long_long papi_time_start, papi_time_stop;
-    papi_time_start = PAPI_get_real_usec();
+    // long_long papi_time_start, papi_time_stop;
+    // papi_time_start = PAPI_get_real_usec();
     int i, j;
     char *file_name = argv[1];
     char *file_name_output = argv[2];
@@ -110,8 +110,8 @@ int main(int argc, char **argv)
         fprintf(file, "\n");
     }
     fclose(file);
-    papi_time_stop = PAPI_get_real_usec();
-    printf("Running time: %dus\n", papi_time_stop - papi_time_start);
+    // papi_time_stop = PAPI_get_real_usec();
+    // printf("Running time: %dus\n", papi_time_stop - papi_time_start);
 
     pthread_exit(NULL);
 }

@@ -4,7 +4,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <papi.h>
+//#include <papi.h>
 #include "queue.c"
 
 #define TOTAL_ITERATIONS 5000000
@@ -544,8 +544,8 @@ int master(int world_size, int world_rank, char *input, char *output, int grid)
         }
     }
 
-    long_long papi_time_start, papi_time_stop;
-    papi_time_start = PAPI_get_real_usec();
+    // long_long papi_time_start, papi_time_stop;
+    // papi_time_start = PAPI_get_real_usec();
 
     int slaveRank;
     for (slaveRank = 1; slaveRank <= slaveCount; ++slaveRank)
@@ -601,7 +601,7 @@ int master(int world_size, int world_rank, char *input, char *output, int grid)
 
     printf("finished calculations and communciations, started writing to output\n");
 
-    papi_time_stop = PAPI_get_real_usec();
+    // papi_time_stop = PAPI_get_real_usec();
 
     outputFile = fopen(output, "w");
     for (rowNumber = 0; rowNumber < rowCount; ++rowNumber)
@@ -614,7 +614,7 @@ int master(int world_size, int world_rank, char *input, char *output, int grid)
     }
     printf("finished successfully!\n");
 
-    printf("Running time for %d processors: %dus\n", world_size, papi_time_stop - papi_time_start);
+    // printf("Running time for %d processors: %dus\n", world_size, papi_time_stop - papi_time_start);
     return 0;
 }
 
