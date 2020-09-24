@@ -1,21 +1,44 @@
-# Image Denoising MPI
-Implementing a parallel algorithm for image denoising with the Ising model using Markow Chain Monte Carlo with MPI library.
+# Image Denoising
+Implementing a parallel algorithm for image denoising with the Ising model using Markow Chain Monte Carlo.
 Note that by images, black-white images (Images that consist of black and white pixels only) will be meant. And these black and white pixels will also be referred as -1 and 1, which is the representation of these images with text, provided in the project.
 
-### How to compile
+### How to compile for sequential version
 
 ```sh
-$ mpicc denoiser.c -o denoiser
+$ gcc denoiser_sequential.c -o denoiser -lm
+```
+### How to compile for Pthreads version
+
+```sh
+$ gcc denoiser_PTHREADS.c -o denoiser -lm -lpthread
 ```
 
-### How to run
+### How to compile for MPI version
+
+```sh
+$ mpicc denoiser.c -o denoiser -lm
+```
+
+### How to run for sequential version
+
+```sh
+$ ./denoiser <input_file> <output_file> <beta> <pi>
+```
+
+### How to compile for Pthreads version
+
+```sh
+$ ./denoiser <input_file> <output_file> <beta> <pi>
+```
+
+### How to run for MPI
 Run the program using command (by default it will be run in grid mode):
 ```sh
-$ mpiexec -np <nof_processors> denoiser <input_file> <output_file> <beta> <pi>
+$ mpiexec -np <nof_processors> ./denoiser <input_file> <output_file> <beta> <pi>
 ```
 Optionally, it can run by the following command to run in row mode:
 ```sh
-$ mpiexec -np <nof_processors> denoiser <input_file> <output_file> <beta> <pi> row
+$ mpiexec -np <nof_processors> ./denoiser <input_file> <output_file> <beta> <pi> row
 ```
 
 where:
