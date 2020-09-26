@@ -174,7 +174,7 @@ int getrandom(int lower, int upper)
     return (rand() % (upper - lower + 1)) + lower;
 }
 
-int summer(int rows, int columns, int rowCenter, int columnCenter)
+int adder(int rows, int columns, int rowCenter, int columnCenter)
 {
     int sum = 0;
     int i, j;
@@ -220,7 +220,7 @@ void *worker(void *arg)
         int rowCount = tinfo->end_row - tinfo->start_row + 1;
 
         /* sum neighbour cells */
-        int sum = summer(N, N, rowPosition, columnPosition);
+        int sum = adder(N, N, rowPosition, columnPosition);
 
         /* calculate delta_e */
         double deltaE = -2 * gammaValue * matrix[rowPosition][columnPosition] * finalmatrix[rowPosition][columnPosition] - 2 * beta * finalmatrix[rowPosition][columnPosition] * sum;
