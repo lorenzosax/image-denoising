@@ -1,37 +1,37 @@
 # Image Denoising
 Implementing a parallel algorithm for image denoising with the Ising model using Markow Chain Monte Carlo.
-Note that by images, black-white images (Images that consist of black and white pixels only) will be meant. And these black and white pixels will also be referred as -1 and 1, which is the representation of these images with text, provided in the project.
+Note that by images, black-white images (Images that consist of black and white pixels only) will be meant. And these black and white pixels will also be referred as -1 and 1, which is the representation of these images with text, provided in the project. We implemented 3 versions of this algorithm: sequential version, Pthreads version and MPI version.
 
-### How to compile for sequential version
-
+## Sequential version
+##### How to compile
 ```sh
 $ gcc denoiser_sequential.c -o denoiser -lm
 ```
-### How to compile for Pthreads version
+##### How to run
+```sh
+$ ./denoiser <input_file> <output_file> <beta> <pi>
+```
 
+## Pthreads version
+##### How to compile
 ```sh
 $ gcc denoiser_PTHREADS.c -o denoiser -lm -lpthread
 ```
 
-### How to compile for MPI version
+##### How to run
+
+```sh
+$ ./denoiser <input_file> <output_file> <beta> <pi>
+```
+
+## MPI version
+##### How to compile
 
 ```sh
 $ mpicc denoiser.c -o denoiser -lm
 ```
 
-### How to run for sequential version
-
-```sh
-$ ./denoiser <input_file> <output_file> <beta> <pi>
-```
-
-### How to run for Pthreads version
-
-```sh
-$ ./denoiser <input_file> <output_file> <beta> <pi>
-```
-
-### How to run for MPI
+##### How to run
 Run the program using command (by default it will be run in grid mode):
 ```sh
 $ mpiexec -np <nof_processors> ./denoiser <input_file> <output_file> <beta> <pi>
@@ -74,3 +74,8 @@ Parallel program will produce an text file with denoised image and with `scripts
 Original                    |  Noisy                   |  Denoised
 :-------------------------:|:-------------------------: |:-------------------------:
 ![alt text](https://github.com/raffranco/Image-Denoising-MPI/blob/master/input-output/yinyang.png?raw=true)  |  ![alt text](https://github.com/raffranco/Image-Denoising-MPI/blob/master/input-output/yinyang_noisy.png?raw=true) | ![alt text](https://github.com/raffranco/Image-Denoising-MPI/blob/master/input-output/yinyang_output.png?raw=true)
+
+## Authors
+
+* **Raffaele Franco** - *Initial work* - [raffranco](https://github.com/raffranco)
+* **Lorenzo Gagliani** - *Initial work* - [lorenzosax](https://github.com/lorenzosax)
