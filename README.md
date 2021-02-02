@@ -77,5 +77,5 @@ Original                    |  Noisy                   |  Denoised
 
 ## Authors
 
-* **Raffaele Franco** - *Initial work* - [raffranco](https://github.com/raffranco)
+* **Raffaele Franco** - *Initial work* - [raffaelefranco](https://github.com/raffaelefranco)
 * **Lorenzo Gagliani** - *Initial work* - [lorenzosax](https://github.com/lorenzosax)
